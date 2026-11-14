@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>部署自检</title>
+  <style>
+    body { font-family: -apple-system, "Microsoft YaHei", sans-serif; margin: 0; padding: 16px; background: #f5f6f8; color: #14171c; }
+    h1 { font-size: 17px; margin: 0 0 4px; }
+    p.sub { font-size: 12px; color: #7a828e; margin: 0 0 16px; }
+    .card { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(20,23,28,.06); }
+    button { width: 100%; padding: 12px; border: 0; border-radius: 10px; background: #1f6feb; color: #fff; font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+    button.gray { background: #eef1f6; color: #3c424c; }
+    pre { background: #f4f6f8; border-radius: 10px; padding: 10px; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; margin: 0; min-height: 20px; }
+    .ok { color: #0b7a3d; }
+    .bad { color: #c1121f; }
+  </style>
+</head>
+<body>
+  <h1>部署自检</h1>
+  <p class="sub">逐条点，把每条结果截图</p>
+
+  <div class="card">
+    <button onclick="t('/api/health','GET')">1. GET /api/health（服务是否活着）</button>
+    <pre id="r1">—</pre>
+  </div>
+
+  <div class="card">
+    <button onclick="t('/api/version','GET')">2. GET /api/version（是不是最新版本）</button>
+    <pre id="r2">—</pre>
+  </div>
+
+  <div class="card">
+    <button onclick="t('/api/ping','POST',{hello:'world'})">3. POST /api/ping（POST 能不能通）</button>
+    <pre id="r3">—</pre>
+  </div>
+
+  <div class="card">
+    <button onclick="reg()">4. POST /api/auth/register（注册）</button>
+    <pre id="r4">—</pre>
+  </div>
+
+
+  <div class="card">
+    <button class="gray" onclick="dumpLog()">5. 回看登录流程日志</button>
+    <pre id="r5">—</pre>
+    <button class="gray" style="margin-top:8px" onclick="clearLog()">清空日志</button>
+  </div>
+
+  <script>
+    function dumpLog() {
+      try {
+        const arr = JSON.parse(localStorage.getItem('cf-auth-log') || '[]');
+        const txt = arr.length
+          ? arr.map((x) => x.t + '  ' + x.step + (x.extra ? '  ' + x.extra : '')).join('\n')
+          : '没有日志（可能还没在登录页尝试过）';
+        out('r5', txt, true);
+      } catch (e) {
+        out('r5', '读取失败：' + e.message, false);
+      }
+    }
+    function clearLog() {
+      try { localStorage.removeItem('cf-auth-log'); } catch {}
+      out('r5', '已清空', true);
+    }
+  </script>
+  <script>
+    const out = (id, txt, ok) => {
+      const el = document.getElementById(id);
+      el.textContent = txt;
+      el.className = ok ? 'ok' : 'bad';
+    };
+
+    async function t(url, method, body) {
+      const id = { '/api/health': 'r1', '/api/version': 'r2', '/api/ping': 'r3' }[url];
+      out(id, '请求中…', true);
+      const t0 = Date.now();
+      try {
+        const r = await fetch(url, {
+          method,
+          headers: body ? { 'Content-Type': 'application/json' } : {},
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        const text = await r.text();
+        out(id, `${r.status} · ${Date.now() - t0}ms\n${text.slice(0, 300)}`, r.ok);
+      } catch (e) {
+        out(id, `请求失败：${e.message}（${Date.now() - t0}ms）`, false);
+      }
+    }
+
+    async function reg() {
+      const id = 'r4';
+      out(id, '请求中…', true);
+      const t0 = Date.now();
+      try {
+        const r = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: 'diag' + Date.now().toString(36), password: 'abc12345' }),
+        });
+        const text = await r.text();
+        out(id, `${r.status} · ${Date.now() - t0}ms\n${text.slice(0, 300)}`, r.ok);
+      } catch (e) {
+        out(id, `请求失败：${e.message}（${Date.now() - t0}ms）`, false);
+      }
+    }
+  </script>
+</body>
+</html>
