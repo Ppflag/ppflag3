@@ -1,0 +1,14 @@
+{
+  "name": "canteen-fit",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "轻宿 —— 面向大学生宿舍减脂与特殊健康状况饮食参考（零依赖）",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/engine.test.mjs && node test/health-data.test.mjs && node test/health-score.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
